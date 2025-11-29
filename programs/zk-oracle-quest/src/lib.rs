@@ -4,6 +4,7 @@
 use anchor_lang::prelude::*;
 use light_sdk::cpi::v2::CpiAccounts;
 use light_sdk::cpi::{v2::LightSystemProgramCpi, InvokeLightSystemProgram, LightCpiInstruction};
+use light_sdk::instruction::account_meta::CompressedAccountMeta;
 use light_sdk::instruction::ValidityProof;
 use light_sdk::{
     account::LightAccount, address::v2::derive_address, derive_light_cpi_signer,
@@ -24,6 +25,7 @@ pub mod zk_oracle_quest {
 
     use super::*;
 
+    /// Place a private bet on an oracle event
     pub fn place_private_bet<'info>(
         ctx: Context<'_, '_, '_, 'info, PlacePrivateBet<'info>>,
         event_id: u64,
@@ -75,6 +77,7 @@ pub mod zk_oracle_quest {
         Ok(())
     }
 
+    /// Initialize a player profile
     pub fn initialize_player<'info>(
         ctx: Context<'_, '_, '_, 'info, InitializePlayer<'info>>,
         proof: ValidityProof,
@@ -121,12 +124,120 @@ pub mod zk_oracle_quest {
         );
         Ok(())
     }
+
+    /// Create a new oracle event
+    pub fn create_oracle_event<'info>(
+        ctx: Context<'_, '_, '_, 'info, CreateOracleEvent<'info>>,
+        event_id: u64,
+        description: String,
+        proof: ValidityProof,
+        address_tree_info: PackedAddressTreeInfo,
+        output_tree_index: u8,
+    ) -> Result<()> {
+        require!(description.len() <= 100, OracleError::DescriptionTooLong);
+
+        let light_cpi_accounts = CpiAccounts::new(
+            ctx.accounts.authority.as_ref(),
+            ctx.remaining_accounts,
+            LIGHT_CPI_SIGNER.clone(),
+        );
+
+        let (address, address_seed) = derive_address(
+            &[b"oracle_event", &event_id.to_le_bytes()],
+            &address_tree_info
+                .get_tree_pubkey(&light_cpi_accounts)
+                .map_err(|_| error!(OracleError::InvalidAddressTree))?,
+            &crate::ID,
+        );
+
+        // Create the compressed account for the oracle event
+        let mut oracle_event =
+            LightAccount::<OracleEvent>::new_init(&crate::ID, Some(address), output_tree_index);
+
+        // Set the oracle event data
+        oracle_event.event_id = event_id;
+        oracle_event.description = description.clone();
+        oracle_event.resolved = false;
+        oracle_event.outcome = false;
+        oracle_event.authority = ctx.accounts.authority.key();
+
+        let new_address_param =
+            address_tree_info.into_new_address_params_assigned_packed(address_seed, Some(0));
+
+        // Call the light client CPI to create the compressed account
+        LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER.clone(), proof)
+            .with_light_account(oracle_event)?
+            .with_new_addresses(&[new_address_param])
+            .invoke(light_cpi_accounts)?;
+
+        msg!(
+            "Oracle event created: id={}, description={}",
+            event_id,
+            description
+        );
+        Ok(())
+    }
+
+    /// Resolve an existing oracle event with the outcome
+    pub fn resolve_oracle_event<'info>(
+        ctx: Context<'_, '_, '_, 'info, ResolveOracleEvent<'info>>,
+        proof: ValidityProof,
+        existing_event: ExistingOracleEventIxData,
+    ) -> Result<()> {
+        let light_cpi_accounts = CpiAccounts::new(
+            ctx.accounts.authority.as_ref(),
+            ctx.remaining_accounts,
+            LIGHT_CPI_SIGNER.clone(),
+        );
+
+        // Create mutable version of the existing oracle event
+        let mut oracle_event = LightAccount::<OracleEvent>::new_mut(
+            &crate::ID,
+            &existing_event.account_meta,
+            OracleEvent {
+                event_id: existing_event.event_id,
+                description: existing_event.description.clone(),
+                resolved: existing_event.resolved,
+                outcome: existing_event.outcome,
+                authority: existing_event.authority,
+            },
+        )?;
+
+        // Verify authority
+        require!(
+            oracle_event.authority == ctx.accounts.authority.key(),
+            OracleError::UnauthorizedResolver
+        );
+        require!(!oracle_event.resolved, OracleError::EventAlreadyResolved);
+
+        // Update the oracle event data
+        oracle_event.resolved = true;
+        oracle_event.outcome = existing_event.update_outcome;
+
+        // Call the light client CPI to update the compressed account
+        LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER.clone(), proof)
+            .with_light_account(oracle_event)?
+            .invoke(light_cpi_accounts)?;
+
+        msg!(
+            "Oracle event resolved: id={}, outcome={}",
+            existing_event.event_id,
+            existing_event.update_outcome
+        );
+        Ok(())
+    }
 }
 
 #[error_code]
 pub enum OracleError {
     #[msg("failed to get address tree pubkey")]
     InvalidAddressTree,
+    #[msg("description too long (max 100 chars)")]
+    DescriptionTooLong,
+    #[msg("only authority can resolve oracle events")]
+    UnauthorizedResolver,
+    #[msg("event already resolved")]
+    EventAlreadyResolved,
 }
 
 #[derive(Accounts)]
@@ -139,6 +250,18 @@ pub struct PlacePrivateBet<'info> {
 pub struct InitializePlayer<'info> {
     #[account(mut)]
     pub player: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct CreateOracleEvent<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct ResolveOracleEvent<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
 }
 
 /// Compressed account data for a private bet
@@ -169,4 +292,40 @@ pub struct PlayerProfile {
     pub total_bets: u64,
     #[hash]
     pub bets_won: u64,
+}
+
+/// Compressed account for oracle events
+#[derive(
+    Clone, Debug, Default, AnchorDeserialize, AnchorSerialize, LightDiscriminator, LightHasher,
+)]
+pub struct OracleEvent {
+    #[hash]
+    pub event_id: u64,
+    #[hash]
+    pub description: String,
+    #[hash]
+    pub resolved: bool,
+    #[hash]
+    pub outcome: bool,
+    #[hash]
+    pub authority: Pubkey,
+}
+
+#[derive(Clone, Debug, AnchorSerialize, AnchorDeserialize)]
+pub struct ExistingOracleEventIxData {
+    pub account_meta: CompressedAccountMeta,
+    pub event_id: u64,
+    pub description: String,
+    pub resolved: bool,
+    pub outcome: bool,
+    pub authority: Pubkey,
+    pub update_outcome: bool, // The new outcome to set
+}
+
+// Stub for IDL
+#[event]
+pub struct AccountTypes {
+    pub private_bet: PrivateBet,
+    pub player_profile: PlayerProfile,
+    pub oracle_event: OracleEvent,
 }

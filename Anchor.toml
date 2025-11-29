@@ -7,6 +7,9 @@ skip-lint = false
 [programs.localnet]
 zk_oracle_quest = "BziNjq5EE39WnWW2sQvvHUdUjNurKr8kA9dM4VRS5Vzg"
 
+[programs.devnet]
+zk_oracle_quest = "BziNjq5EE39WnWW2sQvvHUdUjNurKr8kA9dM4VRS5Vzg"
+
 [registry]
 url = "https://api.apr.dev"
 

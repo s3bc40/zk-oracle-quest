@@ -226,6 +226,85 @@ pub mod zk_oracle_quest {
         );
         Ok(())
     }
+
+    /// Claim winnings for a player bet
+    pub fn claim_winnings<'info>(
+        ctx: Context<'_, '_, '_, 'info, PlacePrivateBet<'info>>,
+        proof: ValidityProof,
+        existing_bet: ExistingPrivateBetIxData,
+        existing_profile: ExistingPlayerProfileIxData,
+        resolved_event: ResolvedOracleEventIxData,
+    ) -> Result<()> {
+        let light_cpi_accounts = CpiAccounts::new(
+            ctx.accounts.player.as_ref(),
+            ctx.remaining_accounts,
+            LIGHT_CPI_SIGNER.clone(),
+        );
+
+        // Verify the bet belongs to the player
+        require!(
+            existing_bet.player == ctx.accounts.player.key(),
+            OracleError::UnauthorizedClaim
+        );
+
+        // Verify the event is resolved
+        require!(resolved_event.resolved, OracleError::EventNotResolved);
+
+        // Verify if the event id matches
+        require!(
+            existing_bet.event_id == resolved_event.event_id,
+            OracleError::EventMismatch
+        );
+
+        // Check if the player won
+        let player_won = existing_bet.chosen_outcome == resolved_event.outcome;
+        require!(player_won, OracleError::BetDidNotWin);
+
+        // Update bet and profile data accordingly
+        let mut player_profile = LightAccount::<PlayerProfile>::new_mut(
+            &crate::ID,
+            &existing_profile.account_meta,
+            PlayerProfile {
+                owner: existing_profile.owner,
+                balance: existing_profile.balance,
+                total_bets: existing_profile.total_bets,
+                bets_won: existing_profile.bets_won,
+            },
+        )?;
+
+        // Verify profile owner matches
+        require!(
+            player_profile.owner == ctx.accounts.player.key(),
+            OracleError::UnauthorizedClaim
+        );
+
+        // Calculate winnings by doubling the bet amount (simplicity)
+        let winnings = existing_bet
+            .amount
+            .checked_mul(2)
+            .ok_or(OracleError::BetOverflow)?;
+        player_profile.balance = player_profile
+            .balance
+            .checked_add(winnings)
+            .ok_or(OracleError::BalanceOverflow)?;
+        player_profile.bets_won = player_profile
+            .bets_won
+            .checked_add(1)
+            .ok_or(OracleError::BetsWonOverflow)?;
+
+        // Call the light client CPI to update the player profile
+        LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER.clone(), proof)
+            .with_light_account(player_profile)?
+            .invoke(light_cpi_accounts)?;
+
+        msg!(
+            "Winnings claimed: player={}, amount={}, new_balance={}",
+            ctx.accounts.player.key(),
+            winnings,
+            existing_profile.balance + winnings
+        );
+        Ok(())
+    }
 }
 
 #[error_code]
@@ -238,6 +317,20 @@ pub enum OracleError {
     UnauthorizedResolver,
     #[msg("event already resolved")]
     EventAlreadyResolved,
+    #[msg("unauthorized to claim winnings")]
+    UnauthorizedClaim,
+    #[msg("event not resolved yet")]
+    EventNotResolved,
+    #[msg("event ID mismatch")]
+    EventMismatch,
+    #[msg("bet did not win")]
+    BetDidNotWin,
+    #[msg("bet amount overflow")]
+    BetOverflow,
+    #[msg("balance overflow")]
+    BalanceOverflow,
+    #[msg("bets won overflow")]
+    BetsWonOverflow,
 }
 
 #[derive(Accounts)]
@@ -262,6 +355,12 @@ pub struct CreateOracleEvent<'info> {
 pub struct ResolveOracleEvent<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct ClaimWinnings<'info> {
+    #[account(mut)]
+    pub player: Signer<'info>,
 }
 
 /// Compressed account data for a private bet
@@ -320,6 +419,31 @@ pub struct ExistingOracleEventIxData {
     pub outcome: bool,
     pub authority: Pubkey,
     pub update_outcome: bool, // The new outcome to set
+}
+
+#[derive(Clone, Debug, AnchorSerialize, AnchorDeserialize)]
+pub struct ExistingPrivateBetIxData {
+    pub account_meta: CompressedAccountMeta,
+    pub player: Pubkey,
+    pub event_id: u64,
+    pub chosen_outcome: bool,
+    pub amount: u64,
+}
+
+#[derive(Clone, Debug, AnchorSerialize, AnchorDeserialize)]
+pub struct ExistingPlayerProfileIxData {
+    pub account_meta: CompressedAccountMeta,
+    pub owner: Pubkey,
+    pub balance: u64,
+    pub total_bets: u64,
+    pub bets_won: u64,
+}
+
+#[derive(Clone, Debug, AnchorSerialize, AnchorDeserialize)]
+pub struct ResolvedOracleEventIxData {
+    pub event_id: u64,
+    pub resolved: bool,
+    pub outcome: bool,
 }
 
 // Stub for IDL

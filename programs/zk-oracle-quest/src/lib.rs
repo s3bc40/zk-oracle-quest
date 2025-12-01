@@ -12,10 +12,10 @@ use light_sdk::{
 };
 use light_sdk_types::CpiSigner;
 
-declare_id!("BziNjq5EE39WnWW2sQvvHUdUjNurKr8kA9dM4VRS5Vzg");
+declare_id!("B6qG7jPjiTcdnNS1Rttf5We5H4GbyN3dUqu8VKMFv5Eh");
 
 pub const LIGHT_CPI_SIGNER: CpiSigner =
-    derive_light_cpi_signer!("BziNjq5EE39WnWW2sQvvHUdUjNurKr8kA9dM4VRS5Vzg");
+    derive_light_cpi_signer!("B6qG7jPjiTcdnNS1Rttf5We5H4GbyN3dUqu8VKMFv5Eh");
 
 // pub const LIGHT_CPI_SIGNER: CpiSigner =
 //     derive_light_cpi_signer!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");

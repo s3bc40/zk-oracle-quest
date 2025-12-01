@@ -4,15 +4,18 @@
 resolution = true
 skip-lint = false
 
-[programs.localnet]
-zk_oracle_quest = "BziNjq5EE39WnWW2sQvvHUdUjNurKr8kA9dM4VRS5Vzg"
-
 [programs.devnet]
+zk_oracle_quest = "B6qG7jPjiTcdnNS1Rttf5We5H4GbyN3dUqu8VKMFv5Eh"
+
+[programs.localnet]
 zk_oracle_quest = "BziNjq5EE39WnWW2sQvvHUdUjNurKr8kA9dM4VRS5Vzg"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
-wallet = "~/.config/solana/id.json"
+cluster = "devnet"
+wallet = "~/.config/solana/devnet-wallet.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"

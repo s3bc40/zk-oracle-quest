@@ -1,0 +1,718 @@
+{
+  "address": "B6qG7jPjiTcdnNS1Rttf5We5H4GbyN3dUqu8VKMFv5Eh",
+  "metadata": {
+    "name": "zk_oracle_quest",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "claim_winnings",
+      "docs": [
+        "Claim winnings for a player bet"
+      ],
+      "discriminator": [
+        161,
+        215,
+        24,
+        59,
+        14,
+        236,
+        242,
+        221
+      ],
+      "accounts": [
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "proof",
+          "type": {
+            "defined": {
+              "name": "ValidityProof"
+            }
+          }
+        },
+        {
+          "name": "existing_bet",
+          "type": {
+            "defined": {
+              "name": "ExistingPrivateBetIxData"
+            }
+          }
+        },
+        {
+          "name": "existing_profile",
+          "type": {
+            "defined": {
+              "name": "ExistingPlayerProfileIxData"
+            }
+          }
+        },
+        {
+          "name": "resolved_event",
+          "type": {
+            "defined": {
+              "name": "ResolvedOracleEventIxData"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "create_oracle_event",
+      "docs": [
+        "Create a new oracle event"
+      ],
+      "discriminator": [
+        102,
+        153,
+        80,
+        164,
+        115,
+        60,
+        128,
+        81
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "event_id",
+          "type": "u64"
+        },
+        {
+          "name": "description",
+          "type": "string"
+        },
+        {
+          "name": "proof",
+          "type": {
+            "defined": {
+              "name": "ValidityProof"
+            }
+          }
+        },
+        {
+          "name": "address_tree_info",
+          "type": {
+            "defined": {
+              "name": "PackedAddressTreeInfo"
+            }
+          }
+        },
+        {
+          "name": "output_tree_index",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "initialize_player",
+      "docs": [
+        "Initialize a player profile"
+      ],
+      "discriminator": [
+        79,
+        249,
+        88,
+        177,
+        220,
+        62,
+        56,
+        128
+      ],
+      "accounts": [
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "proof",
+          "type": {
+            "defined": {
+              "name": "ValidityProof"
+            }
+          }
+        },
+        {
+          "name": "address_tree_info",
+          "type": {
+            "defined": {
+              "name": "PackedAddressTreeInfo"
+            }
+          }
+        },
+        {
+          "name": "output_tree_index",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "place_private_bet",
+      "docs": [
+        "Place a private bet on an oracle event"
+      ],
+      "discriminator": [
+        125,
+        166,
+        81,
+        218,
+        164,
+        175,
+        87,
+        180
+      ],
+      "accounts": [
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "event_id",
+          "type": "u64"
+        },
+        {
+          "name": "chosen_outcome",
+          "type": "bool"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "proof",
+          "type": {
+            "defined": {
+              "name": "ValidityProof"
+            }
+          }
+        },
+        {
+          "name": "address_tree_info",
+          "type": {
+            "defined": {
+              "name": "PackedAddressTreeInfo"
+            }
+          }
+        },
+        {
+          "name": "output_tree_index",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "resolve_oracle_event",
+      "docs": [
+        "Resolve an existing oracle event with the outcome"
+      ],
+      "discriminator": [
+        146,
+        124,
+        198,
+        47,
+        72,
+        61,
+        56,
+        158
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "proof",
+          "type": {
+            "defined": {
+              "name": "ValidityProof"
+            }
+          }
+        },
+        {
+          "name": "existing_event",
+          "type": {
+            "defined": {
+              "name": "ExistingOracleEventIxData"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "AccountTypes",
+      "discriminator": [
+        58,
+        92,
+        176,
+        58,
+        112,
+        71,
+        251,
+        42
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidAddressTree",
+      "msg": "failed to get address tree pubkey"
+    },
+    {
+      "code": 6001,
+      "name": "DescriptionTooLong",
+      "msg": "description too long (max 100 chars)"
+    },
+    {
+      "code": 6002,
+      "name": "UnauthorizedResolver",
+      "msg": "only authority can resolve oracle events"
+    },
+    {
+      "code": 6003,
+      "name": "EventAlreadyResolved",
+      "msg": "event already resolved"
+    },
+    {
+      "code": 6004,
+      "name": "UnauthorizedClaim",
+      "msg": "unauthorized to claim winnings"
+    },
+    {
+      "code": 6005,
+      "name": "EventNotResolved",
+      "msg": "event not resolved yet"
+    },
+    {
+      "code": 6006,
+      "name": "EventMismatch",
+      "msg": "event ID mismatch"
+    },
+    {
+      "code": 6007,
+      "name": "BetDidNotWin",
+      "msg": "bet did not win"
+    },
+    {
+      "code": 6008,
+      "name": "BetOverflow",
+      "msg": "bet amount overflow"
+    },
+    {
+      "code": 6009,
+      "name": "BalanceOverflow",
+      "msg": "balance overflow"
+    },
+    {
+      "code": 6010,
+      "name": "BetsWonOverflow",
+      "msg": "bets won overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "AccountTypes",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "private_bet",
+            "type": {
+              "defined": {
+                "name": "PrivateBet"
+              }
+            }
+          },
+          {
+            "name": "player_profile",
+            "type": {
+              "defined": {
+                "name": "PlayerProfile"
+              }
+            }
+          },
+          {
+            "name": "oracle_event",
+            "type": {
+              "defined": {
+                "name": "OracleEvent"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompressedAccountMeta",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tree_info",
+            "docs": [
+              "Merkle tree context."
+            ],
+            "type": {
+              "defined": {
+                "name": "PackedStateTreeInfo"
+              }
+            }
+          },
+          {
+            "name": "address",
+            "docs": [
+              "Address."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "output_state_tree_index",
+            "docs": [
+              "Output merkle tree index."
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompressedProof",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "a",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "b",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "c",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ExistingOracleEventIxData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "account_meta",
+            "type": {
+              "defined": {
+                "name": "CompressedAccountMeta"
+              }
+            }
+          },
+          {
+            "name": "event_id",
+            "type": "u64"
+          },
+          {
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "name": "resolved",
+            "type": "bool"
+          },
+          {
+            "name": "outcome",
+            "type": "bool"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "update_outcome",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ExistingPlayerProfileIxData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "account_meta",
+            "type": {
+              "defined": {
+                "name": "CompressedAccountMeta"
+              }
+            }
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "balance",
+            "type": "u64"
+          },
+          {
+            "name": "total_bets",
+            "type": "u64"
+          },
+          {
+            "name": "bets_won",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ExistingPrivateBetIxData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "account_meta",
+            "type": {
+              "defined": {
+                "name": "CompressedAccountMeta"
+              }
+            }
+          },
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "event_id",
+            "type": "u64"
+          },
+          {
+            "name": "chosen_outcome",
+            "type": "bool"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OracleEvent",
+      "docs": [
+        "Compressed account for oracle events"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "event_id",
+            "type": "u64"
+          },
+          {
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "name": "resolved",
+            "type": "bool"
+          },
+          {
+            "name": "outcome",
+            "type": "bool"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PackedAddressTreeInfo",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "address_merkle_tree_pubkey_index",
+            "type": "u8"
+          },
+          {
+            "name": "address_queue_pubkey_index",
+            "type": "u8"
+          },
+          {
+            "name": "root_index",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PackedStateTreeInfo",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "root_index",
+            "type": "u16"
+          },
+          {
+            "name": "prove_by_index",
+            "type": "bool"
+          },
+          {
+            "name": "merkle_tree_pubkey_index",
+            "type": "u8"
+          },
+          {
+            "name": "queue_pubkey_index",
+            "type": "u8"
+          },
+          {
+            "name": "leaf_index",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PlayerProfile",
+      "docs": [
+        "Compressed account data for a player profile"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "balance",
+            "type": "u64"
+          },
+          {
+            "name": "total_bets",
+            "type": "u64"
+          },
+          {
+            "name": "bets_won",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PrivateBet",
+      "docs": [
+        "Compressed account data for a private bet"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "event_id",
+            "type": "u64"
+          },
+          {
+            "name": "chosen_outcome",
+            "type": "bool"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ResolvedOracleEventIxData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "event_id",
+            "type": "u64"
+          },
+          {
+            "name": "resolved",
+            "type": "bool"
+          },
+          {
+            "name": "outcome",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ValidityProof",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "option": {
+              "defined": {
+                "name": "CompressedProof"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

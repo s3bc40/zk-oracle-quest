@@ -5,10 +5,12 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-zk_oracle_quest = "B6qG7jPjiTcdnNS1Rttf5We5H4GbyN3dUqu8VKMFv5Eh"
+simple-oracle-quest = "9tSP8kXEUif9doAPhAbUKZm3qKNphpcHGKc35jLr1xEA"
+# zk_oracle_quest = "B6qG7jPjiTcdnNS1Rttf5We5H4GbyN3dUqu8VKMFv5Eh"
 
 [programs.localnet]
-zk_oracle_quest = "BziNjq5EE39WnWW2sQvvHUdUjNurKr8kA9dM4VRS5Vzg"
+simple-oracle-quest = "9tSP8kXEUif9doAPhAbUKZm3qKNphpcHGKc35jLr1xEA"
+# zk_oracle_quest = "B6qG7jPjiTcdnNS1Rttf5We5H4GbyN3dUqu8VKMFv5Eh"
 
 [registry]
 url = "https://api.apr.dev"
@@ -17,5 +19,6 @@ url = "https://api.apr.dev"
 cluster = "devnet"
 wallet = "~/.config/solana/devnet-wallet.json"
 
-[scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+[workspace]
+members = ["programs/simple-oracle-quest"]
+exclude = ["programs/zk-oracle-quest"]

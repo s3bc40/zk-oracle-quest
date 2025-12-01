@@ -4,6 +4,7 @@ import { useAnchorWallet, useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useState } from "react";
 import { initializePlayer } from "../lib/program-interactions";
+import Link from "next/link";
 
 export default function Home() {
   const { publicKey, connected } = useWallet();
@@ -62,9 +63,11 @@ export default function Home() {
                 >
                   {loading ? "Processing..." : "Initialize Profile"}
                 </button>
-                <button className="bg-green-600 hover:bg-green-700 px-8 py-3 rounded-lg font-semibold ml-4">
-                  View Events
-                </button>
+                <Link href="/events">
+                  <button className="bg-green-600 hover:bg-green-700 px-8 py-3 rounded-lg font-semibold ml-4">
+                    View Events
+                  </button>
+                </Link>
               </div>
             </div>
           ) : (

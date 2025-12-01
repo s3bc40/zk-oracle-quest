@@ -1,15 +1,19 @@
 "use client";
 
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useAnchorWallet, useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useState } from "react";
 import Link from "next/link";
 import { mockEvents, OracleEvent } from "../../lib/mock-data";
+import BetModal from "@/components/BetModal";
+import { placeBet } from "@/lib/program-interactions";
 
 export default function EventsPage() {
   const { connected } = useWallet();
+  const wallet = useAnchorWallet();
   const [filter, setFilter] = useState<"all" | "active" | "resolved">("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [selectedEvent, setSelectedEvent] = useState<OracleEvent | null>(null);
 
   const filteredEvents = mockEvents.filter((event) => {
     if (filter === "active" && event.resolved) return false;
@@ -29,6 +33,29 @@ export default function EventsPage() {
         return "bg-red-600";
       default:
         return "bg-gray-600";
+    }
+  };
+
+  const handlePlaceBet = async (
+    eventId: number,
+    outcome: boolean,
+    amount: number
+  ) => {
+    if (!wallet) {
+      alert("Please connect your wallet!");
+      return;
+    }
+
+    console.log("Placing bet:", { eventId, outcome, amount });
+
+    const result = await placeBet(wallet, eventId, outcome, amount);
+
+    if (result.success && result.signature) {
+      const explorerUrl = `https://explorer.solana.com/tx/${result.signature}?cluster=devnet`;
+      alert(`✅ Bet placed successfully!\n\nView transaction:\n${explorerUrl}`);
+      window.open(explorerUrl, "_blank");
+    } else {
+      alert(`❌ ${result.message}\n\n${result.error || ""}`);
     }
   };
 
@@ -121,6 +148,7 @@ export default function EventsPage() {
               key={event.id}
               event={event}
               getCategoryColor={getCategoryColor}
+              onPlaceBet={() => setSelectedEvent(event)}
             />
           ))}
         </div>
@@ -131,6 +159,16 @@ export default function EventsPage() {
           </div>
         )}
       </div>
+
+      {/* Bet Modal */}
+      {selectedEvent && (
+        <BetModal
+          event={selectedEvent}
+          isOpen={!!selectedEvent}
+          onClose={() => setSelectedEvent(null)}
+          onPlaceBet={handlePlaceBet}
+        />
+      )}
     </main>
   );
 }
@@ -138,9 +176,11 @@ export default function EventsPage() {
 function EventCard({
   event,
   getCategoryColor,
+  onPlaceBet,
 }: {
   event: OracleEvent;
   getCategoryColor: (cat: string) => string;
+  onPlaceBet: () => void;
 }) {
   const yesPercentage =
     event.totalBets > 0 ? (event.yesVotes / event.totalBets) * 100 : 50;
@@ -236,10 +276,13 @@ function EventCard({
         </div>
       </div>
 
-      {/* Action Button - Always at bottom */}
+      {/* Action Button */}
       <div className="mt-auto pt-4">
         {!event.resolved ? (
-          <button className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold transition-colors shadow-lg hover:shadow-xl">
+          <button
+            onClick={onPlaceBet}
+            className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold transition-colors shadow-lg hover:shadow-xl"
+          >
             Place Bet
           </button>
         ) : (

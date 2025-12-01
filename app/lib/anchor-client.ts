@@ -1,10 +1,10 @@
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { AnchorWallet } from "@solana/wallet-adapter-react";
-import idl from "../idl/zk_oracle_quest.json";
+import idl from "../idl/simple_oracle_quest.json";
 
 const PROGRAM_ID = new PublicKey(
-  "B6qG7jPjiTcdnNS1Rttf5We5H4GbyN3dUqu8VKMFv5Eh"
+  "9tSP8kXEUif9doAPhAbUKZm3qKNphpcHGKc35jLr1xEA"
 );
 const DEVNET_RPC = "https://api.devnet.solana.com";
 

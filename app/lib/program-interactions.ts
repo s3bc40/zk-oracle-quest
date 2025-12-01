@@ -1,87 +1,127 @@
 import { AnchorWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { getProgram } from "./anchor-client";
+import BN from "bn.js";
 
-// Initialize Player Profile
 export async function initializePlayer(wallet: AnchorWallet) {
   try {
     const program = getProgram(wallet);
+    const player = wallet.publicKey;
 
-    // TODO: This will require Light Protocol SDK integration for compressed accounts
+    // Derive PDA for player profile
+    const [playerProfilePda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("player"), player.toBuffer()],
+      program.programId
+    );
 
-    console.log("Initializing player profile...");
-    console.log("Player pubkey:", wallet.publicKey.toBase58());
+    console.log("🚀 Initializing player...");
+    console.log("Player:", player.toBase58());
+    console.log("Player PDA:", playerProfilePda.toBase58());
 
-    // This is where we'd call your program's initialize_player instruction
-    // with proper Light Protocol proof generation
+    const tx = await program.methods
+      .initializePlayer()
+      .accounts({
+        playerProfile: playerProfilePda,
+        signer: player,
+      })
+      .rpc();
+
+    console.log("✅ Player initialized!");
+    console.log("Transaction:", tx);
 
     return {
       success: true,
+      signature: tx,
       message: "Player profile initialized!",
     };
-  } catch (error) {
-    console.error("Error initializing player:", error);
+  } catch (error: unknown) {
+    console.error("❌ Error:", error);
+
+    if (error instanceof Error && error.message?.includes("already in use")) {
+      return {
+        success: true,
+        message: "Player profile already exists!",
+      };
+    }
+
     return {
       success: false,
-      message: "Failed to initialize player profile",
+      message:
+        error instanceof Error ? error.message : "Failed to initialize player",
+      error: String(error),
     };
   }
 }
 
-// Create Oracle Event (Admin only)
-export async function createOracleEvent(
-  wallet: AnchorWallet,
-  eventId: number,
-  description: string
-) {
-  try {
-    const program = getProgram(wallet);
-
-    console.log("Creating oracle event...");
-    console.log("Event ID:", eventId);
-    console.log("Description:", description);
-
-    // TODO: Implement with Light Protocol SDK
-
-    return {
-      success: true,
-      message: `Event created: ${description}`,
-    };
-  } catch (error) {
-    console.error("Error creating event:", error);
-    return {
-      success: false,
-      message: "Failed to create event",
-    };
-  }
-}
-
-// Place Private Bet
 export async function placeBet(
   wallet: AnchorWallet,
   eventId: number,
   chosenOutcome: boolean,
-  amount: number
+  amountSol: number
 ) {
   try {
     const program = getProgram(wallet);
+    const player = wallet.publicKey;
+    const amountLamports = new BN(amountSol * 1_000_000_000);
 
-    console.log("Placing bet...");
+    // Derive PDAs
+    const [playerProfilePda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("player"), player.toBuffer()],
+      program.programId
+    );
+
+    const [betPda] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("bet"),
+        player.toBuffer(),
+        new BN(eventId).toArrayLike(Buffer, "le", 8),
+      ],
+      program.programId
+    );
+
+    console.log("🎲 Placing bet...");
     console.log("Event ID:", eventId);
     console.log("Outcome:", chosenOutcome ? "YES" : "NO");
-    console.log("Amount:", amount);
+    console.log("Amount:", amountSol, "SOL");
+    console.log("Bet PDA:", betPda.toBase58());
 
-    // TODO: Implement with Light Protocol SDK
+    const tx = await program.methods
+      .placeBet(new BN(eventId), chosenOutcome, amountLamports)
+      .accounts({
+        bet: betPda,
+        playerProfile: playerProfilePda,
+        signer: player,
+      })
+      .rpc();
+
+    console.log("✅ Bet placed!");
+    console.log("Transaction:", tx);
 
     return {
       success: true,
-      message: `Bet placed: ${amount} SOL on ${chosenOutcome ? "YES" : "NO"}`,
+      signature: tx,
+      message: `Bet placed: ${amountSol} SOL on ${
+        chosenOutcome ? "YES" : "NO"
+      }`,
     };
-  } catch (error) {
-    console.error("Error placing bet:", error);
+  } catch (error: unknown) {
+    console.error("❌ Error:", error);
+
+    if (
+      error instanceof Error &&
+      error.message?.includes("Player profile not initialized")
+    ) {
+      return {
+        success: false,
+        message: "Please initialize your player profile first!",
+        error: error.toString(),
+      };
+    }
+
     return {
       success: false,
-      message: "Failed to place bet",
+      message: error instanceof Error ? error.message : "Failed to place bet",
+      error: String(error),
     };
   }
 }

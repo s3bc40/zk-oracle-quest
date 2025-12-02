@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAnchorWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { useRouter } from "next/navigation";
 import { PublicKey } from "@solana/web3.js";
 import {
   createEvent,
@@ -11,12 +12,14 @@ import {
   closeBet,
 } from "@/lib/program-interactions";
 import { getProgram } from "@/lib/anchor-client";
-import { useRouter } from "next/navigation";
 
 // Admin wallet public key
 const ADMIN_WALLET = new PublicKey(
   "69jHhkYPRaMKDM139vYQvH3HsM8mWh9bCBLg44BHkr19"
 );
+
+// Check if public demo mode is enabled
+const PUBLIC_DEMO_MODE = process.env.NEXT_PUBLIC_ENABLE_PUBLIC_ADMIN === "true";
 
 interface OnChainEvent {
   eventId: number;
@@ -50,7 +53,9 @@ export default function AdminPage() {
   const [newEventId, setNewEventId] = useState("");
   const [newEventDescription, setNewEventDescription] = useState("");
 
-  const isAdmin = wallet?.publicKey.equals(ADMIN_WALLET);
+  // Check if user is admin (real admin OR public demo mode)
+  const isRealAdmin = wallet?.publicKey?.equals(ADMIN_WALLET) ?? false;
+  const isAdmin = isRealAdmin || PUBLIC_DEMO_MODE;
 
   // Fetch events
   const fetchEvents = async () => {
@@ -87,6 +92,7 @@ export default function AdminPage() {
     setLoading(true);
     try {
       const bets = await getAllBets(wallet);
+      console.log("Fetched all bets:", bets);
       setAllBets(bets);
     } catch (error) {
       console.error("Error fetching bets:", error);
@@ -96,11 +102,11 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    if (wallet) {
+    if (wallet && isAdmin) {
       fetchEvents();
       fetchAllBets();
     }
-  }, [wallet]);
+  }, [wallet, isAdmin]);
 
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,6 +163,7 @@ export default function AdminPage() {
     if (result.success) {
       alert(result.message);
       fetchAllBets();
+      fetchEvents();
     } else {
       alert(`Error: ${result.message}`);
     }
@@ -176,12 +183,16 @@ export default function AdminPage() {
             </button>
             <WalletMultiButton />
           </div>
-          <WalletMultiButton />
         </div>
         <div className="flex items-center justify-center h-[80vh]">
           <div className="text-center">
             <div className="text-6xl mb-4">🔌</div>
             <h2 className="text-2xl font-bold mb-4">Connect Your Wallet</h2>
+            <p className="text-gray-400 mb-6">
+              {PUBLIC_DEMO_MODE
+                ? "Connect any wallet to access demo admin features"
+                : "Connect the admin wallet to manage events"}
+            </p>
             <WalletMultiButton />
           </div>
         </div>
@@ -208,9 +219,15 @@ export default function AdminPage() {
           <div className="text-center">
             <div className="text-6xl mb-4">🚫</div>
             <h2 className="text-2xl font-bold mb-4">Access Denied</h2>
-            <p className="text-gray-400">
+            <p className="text-gray-400 mb-6">
               Only the admin wallet can access this panel.
             </p>
+            <button
+              onClick={() => router.push("/")}
+              className="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg font-bold"
+            >
+              ← Go Home
+            </button>
           </div>
         </div>
       </div>
@@ -228,9 +245,33 @@ export default function AdminPage() {
           >
             ← Home
           </button>
+          <button
+            onClick={() => router.push("/game")}
+            className="text-gray-400 hover:text-white"
+          >
+            🎮 Game
+          </button>
           <WalletMultiButton />
         </div>
       </div>
+
+      {/* Demo Mode Banner */}
+      {PUBLIC_DEMO_MODE && !isRealAdmin && (
+        <div className="bg-gradient-to-r from-orange-600 to-red-600 p-4 text-center">
+          <p className="text-sm font-bold">
+            🎭 <strong>PUBLIC DEMO MODE</strong> - All admin features are
+            enabled for demonstration purposes. This is a devnet environment
+            with test SOL only.
+          </p>
+        </div>
+      )}
+
+      {/* Real Admin Badge */}
+      {isRealAdmin && (
+        <div className="bg-gradient-to-r from-green-600 to-blue-600 p-2 text-center">
+          <p className="text-xs font-bold">✅ Authenticated as Real Admin</p>
+        </div>
+      )}
 
       <div className="max-w-6xl mx-auto p-8">
         {/* Tabs */}
@@ -450,17 +491,22 @@ export default function AdminPage() {
                         <span className="text-xs font-bold">
                           {bet.amount} SOL
                         </span>
+                        {bet.claimed && (
+                          <span className="text-xs px-2 py-1 rounded bg-blue-600">
+                            CLAIMED
+                          </span>
+                        )}
                       </div>
                       <div className="text-xs text-gray-400">
-                        Player: {bet.player.toBase58().slice(0, 16)}...
+                        Player: {bet.player.toBase58().slice(0, 32)}...
                       </div>
                       <div className="text-xs text-gray-500">
-                        Bet: {bet.pubkey.toBase58().slice(0, 16)}...
+                        Bet PDA: {bet.pubkey.toBase58().slice(0, 32)}...
                       </div>
                     </div>
                     <button
                       onClick={() => handleCloseBet(bet.pubkey)}
-                      className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm font-bold"
+                      className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm font-bold ml-4"
                     >
                       🗑️ Close
                     </button>

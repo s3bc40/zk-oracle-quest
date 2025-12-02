@@ -23,7 +23,7 @@ pub mod simple_oracle_quest {
         amount: u64,
     ) -> Result<()> {
         let bet = &mut ctx.accounts.bet;
-        bet.player = ctx.accounts.player_profile.key();
+        bet.player = ctx.accounts.signer.key();
         bet.event_id = event_id;
         bet.chosen_outcome = chosen_outcome;
         bet.amount = amount;
@@ -31,6 +31,15 @@ pub mod simple_oracle_quest {
 
         let player = &mut ctx.accounts.player_profile;
         player.total_bets += 1;
+
+        let oracle_event = &mut ctx.accounts.oracle_event;
+        oracle_event.total_bets += 1;
+        oracle_event.total_amount += amount;
+        if chosen_outcome {
+            oracle_event.yes_votes += 1;
+        } else {
+            oracle_event.no_votes += 1;
+        }
 
         msg!(
             "Bet placed: {} lamports on {}",
@@ -52,6 +61,11 @@ pub mod simple_oracle_quest {
         event.description = description;
         event.resolved = false;
         event.authority = ctx.accounts.authority.key();
+        event.total_bets = 0;
+        event.yes_votes = 0;
+        event.no_votes = 0;
+        event.total_amount = 0;
+
         msg!("Event created: {}", event.description);
         Ok(())
     }
@@ -76,6 +90,10 @@ pub mod simple_oracle_quest {
             bet.chosen_outcome == event.outcome.unwrap(),
             ErrorCode::BetLost
         );
+        require!(
+            bet.player == ctx.accounts.signer.key(),
+            ErrorCode::NotBetOwner
+        );
 
         bet.claimed = true;
 
@@ -85,6 +103,10 @@ pub mod simple_oracle_quest {
         player.balance += winnings;
 
         msg!("Winnings claimed: {} lamports", winnings);
+        Ok(())
+    }
+
+    pub fn close_bet(_ctx: Context<CloseBet>) -> Result<()> {
         Ok(())
     }
 }
@@ -121,6 +143,12 @@ pub struct PlaceBet<'info> {
         bump
     )]
     pub player_profile: Account<'info, PlayerProfile>,
+    #[account(
+        mut,
+        seeds = [b"event", event_id.to_le_bytes().as_ref()],
+        bump
+    )]
+    pub oracle_event: Account<'info, OracleEvent>,
     #[account(mut)]
     pub signer: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -174,6 +202,14 @@ pub struct ClaimWinnings<'info> {
     pub signer: Signer<'info>,
 }
 
+#[derive(Accounts)]
+pub struct CloseBet<'info> {
+    #[account(mut, close = signer)]
+    pub bet: Account<'info, Bet>,
+    #[account(mut)]
+    pub signer: Signer<'info>,
+}
+
 #[account]
 #[derive(InitSpace)]
 pub struct PlayerProfile {
@@ -202,6 +238,10 @@ pub struct OracleEvent {
     pub resolved: bool,
     pub outcome: Option<bool>,
     pub authority: Pubkey,
+    pub total_bets: u64,
+    pub yes_votes: u64,
+    pub no_votes: u64,
+    pub total_amount: u64,
 }
 
 #[error_code]
@@ -216,4 +256,6 @@ pub enum ErrorCode {
     BetLost,
     #[msg("Description too long (max 200 characters)")]
     DescriptionTooLong,
+    #[msg("Not the bet owner")]
+    NotBetOwner,
 }
